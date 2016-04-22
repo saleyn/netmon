@@ -20,10 +20,10 @@ github-docs:
         git checkout -b gh-pages; \
     fi
 	rm -f rebar.lock
-	git checkout master -- src include
-	git checkout master -- Makefile rebar.*
+	git checkout master -- src include Makefile rebar.*
 	make docs
-	mv -f doc/*.* .
+	ls -1 doc/
+	mv doc/*.* .
 	make clean
 	rm -fr src include Makefile erl_crash.dump priv etc rebar.* README*
 	@FILES=`git st -uall --porcelain | sed -n '/^?? [A-Za-z0-9]/{s/?? //p}'`; \
