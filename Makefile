@@ -23,7 +23,7 @@ github-docs:
 	git checkout master -- src include
 	git checkout master -- Makefile rebar.*
 	make docs
-	mv doc/*.* .
+	mv -f doc/*.* .
 	make clean
 	rm -fr src include Makefile erl_crash.dump priv etc rebar.* README*
 	@FILES=`git st -uall --porcelain | sed -n '/^?? [A-Za-z0-9]/{s/?? //p}'`; \
