@@ -21,7 +21,8 @@ well as subscribing to notification events from the transport layer that inform 
 changes (nodeup, nodedown).  Custom `netmon_instance' monitor processes can be added using 
 `netmon:add_monitor/7' call to ensure that a loss of communication to any/all given nodes follows 
 by enabling a custom recovery action. This callback function is documented 
-as `Notify' argument to {@link netmon_instance:start_link/7}.  The recovery action can be one of three types:
+as `Notify' argument to {@link netmon_instance:start_link/7}.  The recovery action can be one
+of four types:
 
 <ul>
 <li>UDP ping</li>
