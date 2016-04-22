@@ -1,0 +1,182 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Netmon Application
+</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<h1>Netmon Application
+</h1>
+<p><b>Version:</b> 4ce08d8</p>
+<p><b>Authors:</b> Serge Aleynikov (<a href="mailto:saleyn@gmail.com"><tt>saleyn@gmail.com</tt></a>).</p>
+<p>Netmon Application can be used to monitor health of inter-node connections.</p>
+
+<h3><a name="contents">Contents</a></h3>
+<ol>
+  <li><a href="#ov">Overview</a></li>
+  <li><a href="#sc">Application Configuration</a></li>
+  <li><a href="#sc">Reacting to Changes in Connectivy</a></li>
+  <li><a href="#uc">Example Use Cases</a></li>
+</ol>
+
+<h3><a name="ov">Overview</a></h3>
+
+<p>The application is composed of a <code>netmon</code> process that is listening to datagrams on a UDP socket as
+well as subscribing to notification events from the transport layer that inform on node status 
+changes (nodeup, nodedown).  Custom <code>netmon_instance</code> monitor processes can be added using 
+<code>netmon:add_monitor/7</code> call to ensure that a loss of communication to any/all given nodes follows 
+by enabling a custom recovery action. This callback function is documented 
+as <code>Notify</code> argument to <a href="netmon_instance.html#start_link-7"><code>netmon_instance:start_link/7</code></a>.  The recovery action can be one
+of four types:</p>
+
+<ul>
+<li>UDP ping</li>
+<li>TCP ping</li>
+<li>NET_ADM ping</li>
+<li>Passive</li>
+</ul>
+
+<p>Upon detecting a connectivity failure a <code>netmon_instance</code> monitor process starts pinging the remote
+nodes using one of the methods above.  As soon as the UDP ping is echo'd back to the caller or TCP/NET_ADM
+ping establishes TCP transport connection with a remote node, a custom callback function given to 
+<a href="netmon.html#add_monitor-7"><code>netmon:add_monitor/7</code></a> gets called passing the action <code>node_up</code>, <code>node_down</code> or <code>pong</code> (response to 
+a UDP/TCP ping).  The return value of this function determines recovery action.
+The following returned recovery actions are allowed:</p>
+
+<dl>
+<dt>{connect, WatchNodes}</dt>
+    <dd>Use <code>net_kernel:connect/1</code> to connect to a Node.</dd>
+<dt>stop</dt>
+    <dd>Remove monitor instance.</dd>
+<dt>shutdown</dt>
+    <dd>Shutdown current Erlang node using init:stop/0 call.</dd>
+<dt>restart</dt>
+    <dd>Restart current node using init:restart/0 call.</dd>
+<dt>{ignore, WatchNodes}</dt>
+    <dd>Ignore the event and assign a new list of nodes to watch for.</dd>
+</dl>
+
+<h3><a name="sc">Application Configuration</a></h3>
+
+<p>All configuration options are grouped by applicaiton and are <a href="netmon_config.html">documented here</a>.</p>
+
+<h3><a name="uc">Example Use Cases</a></h3>
+
+<ul>
+
+<li>Three nodes <code>a@host1</code>, <code>b@host2</code> and <code>c@host3</code> need to monitor connectivity to 
+each other by starting a <code>test</code> monitor instance and listening for UDP echoes on port 12000.  
+Node c@host3 should only trigger hartbeats if it looses access to both nodes <code>a@host1</code> and 
+<code>b@host2</code>. Network access between three nodes is not restricted by a firewall.
+<pre>+--- a@host1 ---+                            +--- b@host2 ---+
+| Applications: |                            | Applications: |
+|  - netmon     +---------- TCP --+----------+   -netmon     |
+|  - userapp    |                 |          |   -userapp    |
++---------------+                 |          +---------------+
+                                  |
+                                  |          +--- c@host3 ---+
+                                  |          | Applications: |
+                                  +----------+   -netmon     |
+                                             |   -userapp    |
+                                             +---------------+</pre>
+When there is a connectivity issue detected, all nodes should start UDP ping of each other every 10s, 
+and upon receiving a <code>pong</code> response call user-defined callback <code>userapp:link_status/1</code> function that 
+would determine the recovery action.  For documentation of the user-defined callback see 
+<a href="netmon_instance.html#start_link-7"><code>netmon_instance:start_link/7</code></a>.
+Sample configuration:
+<pre>[{netmon,
+    [{monitors,
+         [{'a@host1',  [{test, netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]},
+          {'b@host2',  [{test, netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]},
+          {'c@host3',  [{test, netmon, all, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]}
+         ]},
+     {echo_port, 12000}
+    ]}</pre><p>
+Note that the current node can be included in the list of nodes to monitor (it will not be considered by netmon).</p>
+
+Also identical node configurations can be combined. In the example above configuration of nodes <code>a@host1</code> and
+<code>b@host2</code> can be merged into one entry:
+<pre>[{netmon,
+    [{monitors,
+         [{['a@host1','b@host2'], [{test, netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]},
+          {'c@host3',             [{test, netmon, all, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]}
+         ]},
+     ...
+    ]}</pre>
+</li>
+
+<li>Three nodes <code>a@host1</code>, <code>b@host2</code> and <code>c@host3</code> need to monitor connectivity to 
+each other by starting a <code>test</code> monitor instance.  Connectivity from <code>a@host1</code> node is not allowed 
+by a firewall.  Nodes <code>b@host2</code> and <code>c@host3</code> have <code>netmon</code> listening for UDP echoes on port 12000.
+In case of connectivity loss:
+<ul>
+<li>Node <code>a@host1</code> should passively echo UDP pings coming from 
+<code>b@host2</code> or <code>c@host3</code> but shouldn't attempt to ping them itself.</li>
+<li>Node <code>b@host2</code> (or <code>c@host3</code>) should trigger NET_ADM recovery when <code>a@host1</code> is lost or trigger 
+    UDP pings when <code>c@host3</code> (or <code>b@host2</code>) node is lost.</li>
+</ul>
+<pre>+--- a@host1 ---+       &lt;                    +--- b@host2 ---+
+| Applications: |       &lt;                    | Applications: |
+|  - netmon     +-------&lt;-- TCP --+----------+   -netmon     |
+|  - userapp    |       &lt;         |          |   -userapp    |
++---------------+       &lt;         |          +---------------+
+                        &lt;         |
+                        &lt;         |          +--- c@host3 ---+
+     Firewall restricts &lt;         |          | Applications: |
+     connectivity in    &lt;         +----------+   -netmon     |
+     outbound direction &lt;                    |   -userapp    |
+   only (right-to-left) &lt;                    +---------------+</pre>
+Upon receiving a <code>pong</code> response from a disconnected node or detecting a <code>node_up</code> / <code>node_down</code> condition
+a user-defined callback <code>userapp:link_status/5</code> function is called that would determine the recovery action.
+Sample configuration:
+<pre>[{netmon,
+    [{monitors,
+         [{'a@host1',  [{test,   netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 0, passive}]},
+          {'b@host2',  [{test_c, netmon, any, ['c@host3'], {userapp, link_status}, 10, udp},
+                        {test_a, netmon, any, ['a@host1'], {userapp, link_status}, 10, net_adm}]},
+          {'c@host3',  [{test_b, netmon, any, ['b@host2'], {userapp, link_status}, 10, udp},
+                        {test_a, netmon, any, ['a@host1'], {userapp, link_status}, 10, net_adm}]}
+         ]},
+     {echo_port, 12000}
+    ]}</pre>
+</li>
+</ul>
+
+<p>For testing purposes when you need to run multiple nodes on the same host you can use the <code>port_map</code> configuration
+option.</p>
+
+<h3><a name="mm">Monitoring Mnesia</a></h3>
+
+<dl>
+<dt>Master Nodes (nodes holding disk copies of tables)</dt>
+<dd>
+  These nodes must be started with the kernel option {dist_auto_connect, Mode}, where Mode is <code>once</code> or <code>{callback, M, F}</code>.
+  Upon detecting a loss of connection to another master they'll turn on a UDP heartbeat and when a hartbeat is echoed by 
+  the disconnected master node, one of the nodes (whichever one was up longer) will be assumed to be a primary and the
+  secondary one will be restarted.
+</dd>
+<dt>Nodes behind a firewall</dt>
+<dd>
+  These nodes cannot contact other nodes in front of a firewall and only allow incoming TCP connections to a range of 
+  ports.  For these nodes TCP port 4369 must be open in the firewall to allow outbound connections to the epmd name service.
+  These nodes should be started with the following kernel's options:
+  <ul>
+  <li><code>inet_dist_listen_min</code> and <code>inet_dist_listen_max</code> options.</li>
+  <li><code>{dist_auto_connect, never}</code> option should be set to prevent attempts to connect to nodes in front of the firewall.</li>
+  <li><code>{global_groups, [{FirewalGroup, Nodes}]}</code> should be set to ensure that <code>global</code> doesn't attemp to connect to nodes
+      inside the firewall.</li>
+  </ul>
+  At startup these nodes should not start mnesia application and wait for establishing connections from master nodes.
+</dd>
+<dt>Slave Nodes (nodes) </dt>
+
+</dl>
+
+<hr>
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Apr 22 2016, 09:06:14.</i></p>
+</body>
+</html>

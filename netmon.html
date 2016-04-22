@@ -1,0 +1,92 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Module netmon</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module netmon</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Network Node Monitor.
+
+<p><b>Version:</b> 4ce08d8</p>
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> Serge Aleynikov (<a href="mailto:saleyn@gmail.com"><tt>saleyn@gmail.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>Network Node Monitor
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_monitor-6">add_monitor/6</a></td><td>This function starts a process monitoring <code>Nodes</code>.</td></tr>
+<tr><td valign="top"><a href="#add_monitor-7">add_monitor/7</a></td><td>This function starts a process monitoring <code>Nodes</code>.</td></tr>
+<tr><td valign="top"><a href="#del_monitor-1">del_monitor/1</a></td><td>Shuts down a monitor <code>Name</code> process.</td></tr>
+<tr><td valign="top"><a href="#ip_to_str-1">ip_to_str/1</a></td><td>Formats IP address as "XXX.YYY.ZZZ.NNN" or "XXX.YYY.ZZZ.NNN:MMMMM"
+       if IP is a <code>socket()</code>.</td></tr>
+<tr><td valign="top"><a href="#ip_to_str-2">ip_to_str/2</a></td><td>Formats IP:Port address as "XXX.YYY.ZZZ.NNN:MMMMM".</td></tr>
+<tr><td valign="top"><a href="#nodes_to_ips-1">nodes_to_ips/1</a></td><td>Converts a list of node names to a list of IP addresses.</td></tr>
+<tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td>Start a network monitoring agent.</td></tr>
+<tr><td valign="top"><a href="#state-0">state/0</a></td><td>Return internal server state.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="add_monitor-6">add_monitor/6</a></h3>
+<div class="spec">
+<p><tt>add_monitor(Name, App, Type, Nodes, Notify, Interval) -&gt; any()</tt></p>
+</div><p>Equivalent to <a href="#add_monitor-7"><tt>add_monitor(Name, App, Type, Nodes, Notify, Interval,
+	    udp)</tt></a>.</p>
+<p>This function starts a process monitoring <code>Nodes</code>.</p>
+<p><b>See also:</b> <a href="#add_monitor-7">add_monitor/7</a>.</p>
+
+<h3 class="function"><a name="add_monitor-7">add_monitor/7</a></h3>
+<div class="spec">
+<p><tt>add_monitor(Name, App, Type, Nodes, Notify, Interval, PingType) -&gt; any()</tt></p>
+</div><p>Equivalent to <a href="netmon_instance.html#start_link-7"><tt>netmon_instance:start_link(Name, App, Type, Nodes,
+			   Notify, Interval, PingType)</tt></a>.</p>
+<p>This function starts a process monitoring <code>Nodes</code>.</p>
+<p><b>See also:</b> <a href="netmon_instance.html#start_link-7">netmon_instance:start_link/7</a>.</p>
+
+<h3 class="function"><a name="del_monitor-1">del_monitor/1</a></h3>
+<div class="spec">
+<p><tt>del_monitor(Name) -&gt; ok | {error, not_running}</tt><br></p>
+</div><p>Shuts down a monitor <code>Name</code> process.</p>
+
+<h3 class="function"><a name="ip_to_str-1">ip_to_str/1</a></h3>
+<div class="spec">
+<p><tt>ip_to_str(IP) -&gt; string()</tt>
+<ul class="definitions"><li><tt>IP = <a href="#type-ip_address">ip_address()</a> | string() | <a href="#type-socket">socket()</a></tt></li></ul></p>
+</div><p>Formats IP address as "XXX.YYY.ZZZ.NNN" or "XXX.YYY.ZZZ.NNN:MMMMM"
+       if IP is a <code>socket()</code>.</p>
+
+<h3 class="function"><a name="ip_to_str-2">ip_to_str/2</a></h3>
+<div class="spec">
+<p><tt>ip_to_str(IP, Port::integer()) -&gt; string()</tt>
+<ul class="definitions"><li><tt>IP = <a href="#type-ip_address">ip_address()</a> | string()</tt></li></ul></p>
+</div><p>Formats IP:Port address as "XXX.YYY.ZZZ.NNN:MMMMM"</p>
+
+<h3 class="function"><a name="nodes_to_ips-1">nodes_to_ips/1</a></h3>
+<div class="spec">
+<p><tt>nodes_to_ips(Nodes) -&gt; [{node(), IP::string()}]</tt>
+<ul class="definitions"><li><tt>Nodes = [node()]</tt></li></ul></p>
+</div><p>Converts a list of node names to a list of IP addresses.
+       Error is thrown if a node corresponds to unknown host.</p>
+
+<h3 class="function"><a name="start_link-1">start_link/1</a></h3>
+<div class="spec">
+<p><tt>start_link(Options) -&gt; {ok, Pid} | {error, Reason}</tt>
+<ul class="definitions"><li><tt>Options = [Option]</tt></li><li><tt>Option = {echo_addr, IP::<a href="#type-ip_address">ip_address()</a>} | {echo_port, Port::integer()} | {multicast, IP::<a href="#type-ip_address">ip_address()</a>}</tt></li></ul></p>
+</div><p>Start a network monitoring agent.  It will listen for UDP pings
+       on a given interface/port.  If multicast IP is given, the process
+       will join the multicast group.</p>
+
+<h3 class="function"><a name="state-0">state/0</a></h3>
+<div class="spec">
+<p><tt>state() -&gt; {ok, [{Option::atom(), Value}]}</tt><br></p>
+</div><p>Return internal server state</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Apr 22 2016, 09:06:14.</i></p>
+</body>
+</html>

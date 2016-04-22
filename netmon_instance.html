@@ -1,0 +1,112 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Module netmon_instance</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module netmon_instance</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Network Node Monitor.
+
+<p><b>Version:</b> 4ce08d8</p>
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> Serge Aleynikov (<a href="mailto:saleyn@gmail.com"><tt>saleyn@gmail.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>Network Node Monitor.  This module monitors connectivity to a list
+        of nodes.  When connectivity is lost it starts pinging the
+        disconnected nodes until the ping message is echoed back and
+        connectivity is restored.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#start_link-7">start_link/7</a></td><td>This function adds a monitor of <code>Nodes</code>.</td></tr>
+<tr><td valign="top"><a href="#state-1">state/1</a></td><td>Get internal server state.</td></tr>
+<tr><td valign="top"><a href="#test_notify-1">test_notify/1</a></td><td>Sample test function that can be used in the netmon:add_monitor/7 call.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="start_link-7">start_link/7</a></h3>
+<div class="spec">
+<p><tt>start_link(Name, App, Type, Nodes, Notify, Interval, PingType) -&gt; ok | {error, Reason}</tt>
+<ul class="definitions"><li><tt>Name = atom()</tt></li><li><tt>App = atom()</tt></li><li><tt>Type = any | all</tt></li><li><tt>Nodes = [node()]</tt></li><li><tt>Notify = {M, F}</tt></li><li><tt>Interval = integer()</tt></li><li><tt>PingType = udp | tcp | net_adm | passive</tt></li></ul></p>
+</div><p>This function adds a monitor of <code>Nodes</code>.
+       <dl>
+       <dt>Type</dt>
+           <dd>Controls whether loss of any/all nodes in the <code>Nodes</code> group will
+                result in the call to <code>Notify</code>.</dd>
+       <dt>Nodes</dt>
+           <dd>List of nodes to watch for connectivity.</dd>
+       <dt>App</dt>
+           <dd>Application name starting the monitor instance.</dd>
+       <dt>Interval</dt>
+           <dd>Ping interval in seconds (ping is activated on detecting
+               connection loss).</dd>
+       <dt>PingType</dt>
+           <dd>Controls whether to use UDP pings, net_adm:ping/1 calls
+               or be passive (rely on the peer to establish communication).
+               The later is useful is connectivity to Nodes is protected by
+               a firewall.</dd>
+       <dt><a name="notify">Notify</a></dt>
+           <dd>Is a <code>M:F/1</code> function that takes #mon_notify{} parameter:
+       <pre>           #mon_notify{name=Monitor::atom(), action=Action, node=Node::node(),
+                   node_start_time=NodeST, Details, UpNodes::nodes(),
+                   DnNodes::nodes(), WatchNodes::nodes(), StartTime::now()} -&gt;
+                       Result
+               Result  = {ignore,  NewWatchNodes} |
+                         {connect, NewWatchNodes} |
+                         stop                     |
+                         shutdown                 |
+                         restart
+               Action  = node_up | node_down | ping | pong
+               Details = #ping_packet{} (when Action = ping    | pong)
+                       | InfoList       (when Action = node_up | node_down)
+               NodeST  = now() | undefined</pre>
+       Arguments given in the <code>Notify</code> callback are:
+       <dl>
+       <dt>Monitor</dt>
+           <dd>Name of the monitor instance (from the first argument of
+               netmon:add_monitor/7.</dd>
+       <dt>Node</dt>
+           <dd>Node that caused node_up/node_down/pong event.</dd>
+       <dt>Event</dt>
+           <dd><code>node_up</code>   - a new connection from Node is detected.</dd>
+           <dd><code>node_down</code> - a loss of connection from Node is detected.</dd>
+           <dd><code>ping</code>      - a ping request from a peer node</dd>
+           <dd><code>pong</code>      - an echo reply to a TCP/UDP ping is received
+                             from Node.</dd>
+       <dt>Details</dt>
+           <dd><code>#ping_packet{}</code> - for <code>pong</code> events.</dd>
+           <dd><code>InfoList</code> - for <code>node_up</code> and <code>node_down</code> events.
+               See //kernel/net_kernel:monitor_node/1.</dd>
+       <dt>UpNodes</dt>
+           <dd>List of connected nodes from the <code>WatchNodes</code> list.</dd>
+       <dt>DownNodes</dt>
+           <dd>List of disconnected nodes from the <code>WatchNodes</code> list.</dd>
+       <dt>WatchNodes</dt>
+           <dd>List of nodes to watch for connectivity.</dd>
+       <dt>NodeST</dt>
+           <dd>Time when this monitor was started on <code>Node</code>.</dd>
+       <dt>StartTime</dt>
+           <dd>Time when this monitor was started on current node.</dd>
+       </dl>
+       </dd>
+       </dl></p>
+
+<h3 class="function"><a name="state-1">state/1</a></h3>
+<div class="spec">
+<p><tt>state(Name::pid()) -&gt; [{Option::atom(), Value}]</tt><br></p>
+</div><p>Get internal server state.  Useful for debugging.</p>
+
+<h3 class="function"><a name="test_notify-1">test_notify/1</a></h3>
+<div class="spec">
+<p><tt>test_notify(Mon_notify) -&gt; any()</tt></p>
+</div><p>Sample test function that can be used in the netmon:add_monitor/7 call.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Apr 22 2016, 09:06:14.</i></p>
+</body>
+</html>
