@@ -11,9 +11,10 @@ clean doc:
 docs: doc
     
 clean-docs:
-	rm -f doc/*.{css,html,png} doc/edoc-info
+	rm -fr doc
 
 github-docs:
+	rm -fr doc
 	@if git branch | grep -q gh-pages ; then \
         git checkout gh-pages; \
     else \
