@@ -22,7 +22,6 @@ github-docs:
 	rm -f rebar.lock
 	git checkout master -- src include Makefile rebar.*
 	make docs
-	ls -1 doc/
 	mv doc/*.* .
 	make clean
 	rm -fr src include Makefile erl_crash.dump priv etc rebar.* README*
