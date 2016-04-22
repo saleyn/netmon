@@ -1,0 +1,7 @@
+{release, {"netmon","1.0"}, {erts, ""},
+ [  {kernel,   ""}
+   ,{stdlib,   ""}
+   ,{sasl,     ""}
+   ,{lama,     ""}
+   ,{netmon,   ""}
+ ]}.

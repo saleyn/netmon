@@ -1,0 +1,11 @@
+*.beam
+*.o
+*.d
+*.swp
+*.tgz
+doc
+priv
+ebin
+.rebar/*
+.eunit
+_build

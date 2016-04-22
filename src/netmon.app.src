@@ -1,0 +1,13 @@
+{application, netmon, [
+    {description, "Network Connectivity Monitor"},
+    {vsn, git},
+    {id, "netmon"},
+    {registered, [netmon_app, netmon]},
+    %% NOTE: do not list applications which are load-only!
+    {applications, [ kernel, stdlib, lama ] },
+    %%
+    %% mod: Specify the module name to start the application, plus args
+    %%
+    {mod, {netmon_app, []}},
+    {env, []}
+]}.

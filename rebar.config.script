@@ -1,0 +1,4 @@
+%% Add version number for edoc
+Vsn  = string:strip(os:cmd("git describe --always --tags --abbrev=0 | sed 's/^v//'"), right, $\n).
+{value, {_, EdocOpts}, Config2} = lists:keytake(edoc_opts, 1, CONFIG),
+[{edoc_opts, [{def, {vsn, Vsn}} | EdocOpts]} | Config2].

@@ -1,0 +1,179 @@
+        Netmon Application
+
+@author Serge Aleynikov <saleyn@gmail.com>
+@version {@vsn}
+@title Netmon Application
+
+@doc Netmon Application can be used to monitor health of inter-node connections.
+
+<h3><a name="contents">Contents</a></h3>
+<ol>
+  <li><a href="#ov">Overview</a></li>
+  <li><a href="#sc">Application Configuration</a></li>
+  <li><a href="#sc">Reacting to Changes in Connectivy</a></li>
+  <li><a href="#uc">Example Use Cases</a></li>
+</ol>
+
+<h3><a name="ov">Overview</a></h3>
+
+The application is composed of a `netmon' process that is listening to datagrams on a UDP socket as
+well as subscribing to notification events from the transport layer that inform on node status 
+changes (nodeup, nodedown).  Custom `netmon_instance' monitor processes can be added using 
+`netmon:add_monitor/7' call to ensure that a loss of communication to any/all given nodes follows 
+by enabling a custom recovery action. This callback function is documented 
+as `Notify' argument to {@link netmon_instance:start_link/7}.  The recovery action can be one of three types:
+
+<ul>
+<li>UDP ping</li>
+<li>TCP ping</li>
+<li>NET_ADM ping</li>
+<li>Passive</li>
+</ul>
+
+Upon detecting a connectivity failure a `netmon_instance' monitor process starts pinging the remote
+nodes using one of the methods above.  As soon as the UDP ping is echo'd back to the caller or TCP/NET_ADM
+ping establishes TCP transport connection with a remote node, a custom callback function given to 
+{@link netmon:add_monitor/7} gets called passing the action `node_up', `node_down' or `pong' (response to 
+a UDP/TCP ping).  The return value of this function determines recovery action.
+The following returned recovery actions are allowed:
+
+<dl>
+<dt>{connect, WatchNodes}</dt>
+    <dd>Use `net_kernel:connect/1' to connect to a Node.</dd>
+<dt>stop</dt>
+    <dd>Remove monitor instance.</dd>
+<dt>shutdown</dt>
+    <dd>Shutdown current Erlang node using init:stop/0 call.</dd>
+<dt>restart</dt>
+    <dd>Restart current node using init:restart/0 call.</dd>
+<dt>{ignore, WatchNodes}</dt>
+    <dd>Ignore the event and assign a new list of nodes to watch for.</dd>
+</dl>
+
+<h3><a name="sc">Application Configuration</a></h3>
+
+All configuration options are grouped by applicaiton and are <a href="netmon_config.html">documented here</a>.
+
+<h3><a name="uc">Example Use Cases</a></h3>
+
+<ul>
+
+<li>Three nodes `a@host1', `b@host2' and `c@host3' need to monitor connectivity to 
+each other by starting a `test' monitor instance and listening for UDP echoes on port 12000.  
+Node c@host3 should only trigger hartbeats if it looses access to both nodes `a@host1' and 
+`b@host2'. Network access between three nodes is not restricted by a firewall.
+```
++--- a@host1 ---+                            +--- b@host2 ---+
+| Applications: |                            | Applications: |
+|  - netmon     +---------- TCP --+----------+   -netmon     |
+|  - userapp    |                 |          |   -userapp    |
++---------------+                 |          +---------------+
+                                  |
+                                  |          +--- c@host3 ---+
+                                  |          | Applications: |
+                                  +----------+   -netmon     |
+                                             |   -userapp    |
+                                             +---------------+
+'''
+When there is a connectivity issue detected, all nodes should start UDP ping of each other every 10s, 
+and upon receiving a `pong' response call user-defined callback `userapp:link_status/1' function that 
+would determine the recovery action.  For documentation of the user-defined callback see 
+{@link netmon_instance:start_link/7}.
+Sample configuration:
+```
+[{netmon,
+    [{monitors,
+         [{'a@host1',  [{test, netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]},
+          {'b@host2',  [{test, netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]},
+          {'c@host3',  [{test, netmon, all, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]}
+         ]},
+     {echo_port, 12000}
+    ]}
+'''
+Note that the current node can be included in the list of nodes to monitor (it will not be considered by netmon).
+
+Also identical node configurations can be combined. In the example above configuration of nodes `a@host1' and
+`b@host2' can be merged into one entry:
+```
+[{netmon,
+    [{monitors,
+         [{['a@host1','b@host2'], [{test, netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]},
+          {'c@host3',             [{test, netmon, all, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 10}]}
+         ]},
+     ...
+    ]}
+'''
+</li>
+
+<li>Three nodes `a@host1', `b@host2' and `c@host3' need to monitor connectivity to 
+each other by starting a `test' monitor instance.  Connectivity from `a@host1' node is not allowed 
+by a firewall.  Nodes `b@host2' and `c@host3' have `netmon' listening for UDP echoes on port 12000.
+In case of connectivity loss:
+<ul>
+<li>Node `a@host1' should passively echo UDP pings coming from 
+`b@host2' or `c@host3' but shouldn't attempt to ping them itself.</li>
+<li>Node `b@host2' (or `c@host3') should trigger NET_ADM recovery when `a@host1' is lost or trigger 
+    UDP pings when `c@host3' (or `b@host2') node is lost.</li>
+</ul>
+```
++--- a@host1 ---+       <                    +--- b@host2 ---+
+| Applications: |       <                    | Applications: |
+|  - netmon     +-------<-- TCP --+----------+   -netmon     |
+|  - userapp    |       <         |          |   -userapp    |
++---------------+       <         |          +---------------+
+                        <         |
+                        <         |          +--- c@host3 ---+
+     Firewall restricts <         |          | Applications: |
+     connectivity in    <         +----------+   -netmon     |
+     outbound direction <                    |   -userapp    |
+   only (right-to-left) <                    +---------------+
+'''
+Upon receiving a `pong' response from a disconnected node or detecting a `node_up' / `node_down' condition
+a user-defined callback `userapp:link_status/5' function is called that would determine the recovery action.
+Sample configuration:
+```
+[{netmon,
+    [{monitors,
+         [{'a@host1',  [{test,   netmon, any, ['a@host1', 'b@host2', 'c@host3'], {userapp, link_status}, 0, passive}]},
+          {'b@host2',  [{test_c, netmon, any, ['c@host3'], {userapp, link_status}, 10, udp},
+                        {test_a, netmon, any, ['a@host1'], {userapp, link_status}, 10, net_adm}]},
+          {'c@host3',  [{test_b, netmon, any, ['b@host2'], {userapp, link_status}, 10, udp},
+                        {test_a, netmon, any, ['a@host1'], {userapp, link_status}, 10, net_adm}]}
+         ]},
+     {echo_port, 12000}
+    ]}
+'''
+</li>
+</ul>
+
+For testing purposes when you need to run multiple nodes on the same host you can use the `port_map' configuration
+option.
+
+<h3><a name="mm">Monitoring Mnesia</a></h3>
+
+<dl>
+<dt>Master Nodes (nodes holding disk copies of tables)</dt>
+<dd>
+  These nodes must be started with the kernel option {dist_auto_connect, Mode}, where Mode is `once' or `{callback, M, F}'.
+  Upon detecting a loss of connection to another master they'll turn on a UDP heartbeat and when a hartbeat is echoed by 
+  the disconnected master node, one of the nodes (whichever one was up longer) will be assumed to be a primary and the
+  secondary one will be restarted.
+</dd>
+<dt>Nodes behind a firewall</dt>
+<dd>
+  These nodes cannot contact other nodes in front of a firewall and only allow incoming TCP connections to a range of 
+  ports.  For these nodes TCP port 4369 must be open in the firewall to allow outbound connections to the epmd name service.
+  These nodes should be started with the following kernel's options:
+  <ul>
+  <li>`inet_dist_listen_min' and `inet_dist_listen_max' options.</li>
+  <li>`{dist_auto_connect, never}' option should be set to prevent attempts to connect to nodes in front of the firewall.</li>
+  <li>`{global_groups, [{FirewalGroup, Nodes}]}' should be set to ensure that `global' doesn't attemp to connect to nodes
+      inside the firewall.</li>
+  </ul>
+  At startup these nodes should not start mnesia application and wait for establishing connections from master nodes.
+</dd>
+<dt>Slave Nodes (nodes) </dt>
+
+</dl>
+
+@end
