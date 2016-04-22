@@ -8,6 +8,8 @@ all:
 clean doc:
 	@$(REBAR) $@
 
+docs: doc
+    
 clean-docs:
 	rm -f doc/*.{css,html,png} doc/edoc-info
 
